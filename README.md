@@ -36,63 +36,7 @@ This solution implements a serverless Lakehouse pattern:
 
 ![Serverless Data Lake and Analytics Pipeline Architecture Diagram](architecture.png)
 
-<details>
-<summary>Click to view Mermaid diagram markup</summary>
 
-```mermaid
-flowchart TD
-    subgraph DataSources ["Data Sources Tier"]
-        POS["Retail POS Terminals"]
-        WebStore["E-Commerce Web Store"]
-        SDK["AWS SDK Ingestion Agent"]
-    end
-
-    subgraph StreamingIngest ["Streaming Ingestion Tier"]
-        Firehose["Amazon Kinesis Data Firehose\n(Buffer: 5MB / 300s, GZIP Compress)"]
-    end
-
-    subgraph DataLakeStorage ["Amazon S3 Data Lake (Medallion Architecture)"]
-        S3Raw[("Bronze / Raw Zone\ns3://retail-datalake-raw/\n(Raw JSON Payloads)")]
-        S3Curated[("Silver / Curated Zone\ns3://retail-datalake-curated/\n(Partitioned Snappy Parquet)")]
-        S3Agg[("Gold / Aggregated Zone\ns3://retail-datalake-aggregated/\n(Daily KPI Summaries)")]
-    end
-
-    subgraph ETLGovernance ["Transformation & Governance"]
-        GlueCrawler["AWS Glue Crawler\n(Schema Inference)"]
-        DataCatalog["AWS Glue Data Catalog\n(retail_db.orders_raw)"]
-        GlueETL["AWS Glue Spark ETL Job\n(PySpark Columnar Conversion)"]
-        LakeFormation["AWS Lake Formation\n(Column-Level PII Masking)"]
-        Scheduler["Amazon EventBridge\n(Daily Trigger)"]
-    end
-
-    subgraph AnalyticsPresentation ["Serverless Analytics & BI"]
-        Athena["Amazon Athena\n(Serverless Presto SQL Querying)"]
-        QuickSight["Amazon QuickSight\n(SPICE In-Memory KPI Dashboards)"]
-        Analysts["Business Analysts / Execs"]
-    end
-
-    %% Ingestion Flow
-    POS & WebStore & SDK -->|1. Stream JSON Records| Firehose
-    Firehose -->|2. Ingest to Raw Prefix| S3Raw
-
-    %% Schema & Transformation
-    S3Raw -->|3. Scan Partitions| GlueCrawler
-    GlueCrawler -->|4. Register Tables| DataCatalog
-    Scheduler -->|5. Trigger Scheduled Job| GlueETL
-    DataCatalog --> GlueETL
-    S3Raw -->|6. Extract Raw JSON| GlueETL
-    GlueETL -->|7. Write Partitioned Parquet| S3Curated
-
-    %% Governance & Queries
-    S3Curated --> LakeFormation
-    LakeFormation -->|8. Enforce PII Access Control| Athena
-    Athena -->|9. Fast SQL Queries| S3Curated
-    Athena --> QuickSight
-    QuickSight -->|10. Interactive Dashboards| Analysts
-```
-</details>
-
-> **Note**: A vector format source file (`architecture.drawio`) is included in this directory. You can open and edit it in [draw.io](https://app.diagrams.net/) or [Lucidchart](https://lucid.app/).
 
 ---
 
